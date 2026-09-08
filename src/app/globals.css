@@ -1,0 +1,507 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&subset=vietnamese,latin-ext&display=swap');
+@import "tailwindcss";
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+}
+
+/* ==============================================================================
+   TIPTAP COLLABORATIVE CURSOR & PRESENCE STYLES
+   ============================================================================== */
+.collaboration-cursor__caret {
+  border-left: 2px solid;
+  border-right: 0;
+  margin-left: -1px;
+  margin-right: -1px;
+  pointer-events: none;
+  position: relative;
+  word-break: normal;
+  animation: blink 1.2s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.collaboration-cursor__label {
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  left: -2px;
+  line-height: normal;
+  padding: 2px 6px;
+  position: absolute;
+  top: -1.5em;
+  user-select: none;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  z-index: 20;
+  text-transform: capitalize;
+}
+
+/* ==============================================================================
+   TIPTAP EDITOR CONTENT STYLING
+   ============================================================================== */
+.tiptap {
+  outline: none !important;
+  min-height: 600px;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+  color: #94a3b8;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.tiptap h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.25;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #0f172a;
+}
+
+.tiptap h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: #1e293b;
+}
+
+.tiptap h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: #334155;
+}
+
+.tiptap p {
+  line-height: 1.7;
+  margin-bottom: 0.75rem;
+  color: #334155;
+  font-size: 1rem;
+}
+
+.tiptap ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.tiptap ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.tiptap blockquote {
+  border-left: 3px solid #6366f1;
+  padding-left: 1rem;
+  font-style: italic;
+  color: #475569;
+  margin: 1rem 0;
+}
+
+.tiptap code {
+  background: #f1f5f9;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  color: #0f172a;
+}
+
+.tiptap pre {
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+/* Resizable Image NodeView */
+.tiptap [data-node-view-wrapper] {
+  display: flex;
+}
+
+.tiptap .ProseMirror-selectednode {
+  outline: none !important;
+}
+
+/* Tiptap Table Styling */
+.tiptap table {
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  table-layout: fixed;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+}
+
+.tiptap table td,
+.tiptap table th {
+  min-width: 1em;
+  border: 1px solid #cbd5e1;
+  padding: 0.6rem 0.8rem;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.tiptap table th {
+  font-weight: bold;
+  text-align: left;
+  background-color: #f1f5f9;
+}
+
+.tiptap table .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(99, 102, 241, 0.15);
+  pointer-events: none;
+}
+
+.tiptap table .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background-color: #6366f1;
+  pointer-events: none;
+}
+
+/* Explicit text alignment */
+.tiptap [style*="text-align: left"],
+.tiptap p[style*="text-align: left"],
+.tiptap h1[style*="text-align: left"],
+.tiptap h2[style*="text-align: left"],
+.tiptap h3[style*="text-align: left"] {
+  text-align: left;
+}
+
+.tiptap [style*="text-align: center"],
+.tiptap p[style*="text-align: center"],
+.tiptap h1[style*="text-align: center"],
+.tiptap h2[style*="text-align: center"],
+.tiptap h3[style*="text-align: center"] {
+  text-align: center;
+}
+
+.tiptap [style*="text-align: right"],
+.tiptap p[style*="text-align: right"],
+.tiptap h1[style*="text-align: right"],
+.tiptap h2[style*="text-align: right"],
+.tiptap h3[style*="text-align: right"] {
+  text-align: right;
+}
+
+.tiptap [style*="text-align: justify"],
+.tiptap p[style*="text-align: justify"],
+.tiptap h1[style*="text-align: justify"],
+.tiptap h2[style*="text-align: justify"],
+.tiptap h3[style*="text-align: justify"] {
+  text-align: justify;
+}
+
+/* ==============================================================================
+   8-BIT RETRO PIXEL UTILITIES (ARCADEDOCS.PRO ARCADE EDITION)
+   ============================================================================== */
+.font-pixel {
+  font-family: 'Press Start 2P', monospace;
+}
+
+.font-vt {
+  font-family: 'VT323', monospace;
+}
+
+.font-retro-text {
+  font-family: 'JetBrains Mono', 'Space Grotesk', monospace;
+}
+
+.pixelated {
+  image-rendering: pixelated;
+}
+
+/* ==============================================================================
+   NEO-RETRO ARCADE & WORKSTATION UI DESIGN SYSTEM
+   ============================================================================== */
+
+/* 1. Retro 3D Beveled Panels */
+.retro-panel {
+  background-color: #0e121d;
+  border: 1px solid #1f273d;
+  box-shadow: 
+    inset 1px 1px 0 0 rgba(255, 255, 255, 0.08),
+    inset -1px -1px 0 0 #05070c,
+    0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.retro-panel-sunken {
+  background-color: #07090f;
+  border: 1px solid #1a2030;
+  box-shadow: 
+    inset 1px 1px 2px 0 #000000,
+    inset -1px -1px 0 0 rgba(255, 255, 255, 0.04);
+}
+
+/* 2. Tactile 8-Bit Machine Buttons (Mechanical Bevel + Click Depression) */
+.retro-btn {
+  background-color: #141926;
+  color: #cbd5e1;
+  border: 1px solid #263047;
+  box-shadow: 
+    inset 1px 1px 0 0 rgba(255, 255, 255, 0.12),
+    inset -1px -1px 0 0 #06080e,
+    1px 1px 0 0 #000000;
+  transition: all 0.04s ease;
+  user-select: none;
+}
+
+.retro-btn:hover {
+  background-color: #1a2234;
+  color: #f8fafc;
+  border-color: #384666;
+}
+
+.retro-btn:active {
+  transform: translate(1px, 1px);
+  background-color: #0c0f18;
+  border-color: #111622;
+  box-shadow: 
+    inset 1px 1px 1px 0 #000000,
+    inset -1px -1px 0 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Pressed / Active tool state */
+.retro-btn-active {
+  background-color: #0c101a !important;
+  color: #00f0ff !important;
+  border-color: #00f0ff !important;
+  transform: translate(1px, 1px);
+  box-shadow: 
+    inset 1px 1px 2px 0 #000000,
+    0 0 8px rgba(0, 240, 255, 0.3) !important;
+}
+
+/* Retro Amber Special Action Button (Share, Launch, Draw) */
+.retro-btn-amber {
+  background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+  color: #000000;
+  font-weight: 700;
+  border: 1px solid #fbbf24;
+  box-shadow: 
+    inset 1px 1px 0 0 #fef3c7,
+    inset -1px -1px 0 0 #92400e,
+    2px 2px 0 0 #000000;
+  transition: all 0.04s ease;
+}
+
+.retro-btn-amber:hover {
+  background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+}
+
+.retro-btn-amber:active {
+  transform: translate(1px, 1px);
+  box-shadow: 
+    inset 1px 1px 1px 0 #78350f,
+    1px 1px 0 0 #000000;
+}
+
+/* Retro Cyan Accent Button */
+.retro-btn-cyan {
+  background: linear-gradient(180deg, #00e5ff 0%, #00a3cc 100%);
+  color: #041018;
+  font-weight: 700;
+  border: 1px solid #7bf5ff;
+  box-shadow: 
+    inset 1px 1px 0 0 #e0faff,
+    inset -1px -1px 0 0 #006680,
+    2px 2px 0 0 #000000;
+  transition: all 0.04s ease;
+}
+
+.retro-btn-cyan:active {
+  transform: translate(1px, 1px);
+  box-shadow: 
+    inset 1px 1px 1px 0 #004d61,
+    1px 1px 0 0 #000000;
+}
+
+/* Retro Danger / Clear Button */
+.retro-btn-danger {
+  background-color: #1c1015;
+  color: #f87171;
+  border: 1px solid #451a24;
+  box-shadow: 
+    inset 1px 1px 0 0 rgba(248, 113, 113, 0.15),
+    inset -1px -1px 0 0 #0b0407,
+    1px 1px 0 0 #000000;
+  transition: all 0.04s ease;
+}
+
+.retro-btn-danger:hover {
+  background-color: #2b121c;
+  color: #fca5a5;
+  border-color: #7f1d1d;
+}
+
+.retro-btn-danger:active {
+  transform: translate(1px, 1px);
+  box-shadow: 
+    inset 1px 1px 1px 0 #000000,
+    inset -1px -1px 0 0 #2b121c;
+}
+
+/* 3. Classic Retro Window Frame & Pinstripe Header */
+.retro-window-frame {
+  border: 2px solid #000000;
+  outline: 1px solid #2a344d;
+  box-shadow: 4px 4px 0 0 #000000;
+}
+
+.retro-window-header {
+  background-color: #121724;
+  background-image: repeating-linear-gradient(
+    0deg,
+    #171d2e,
+    #171d2e 2px,
+    #0c101a 2px,
+    #0c101a 4px
+  );
+  border-bottom: 2px solid #000000;
+}
+
+/* 4. Retro Paper Styling for A4 Document (Warm Tactile Ivory with Pixel Border) */
+.retro-a4-sheet {
+  background-color: #fcfbf7;
+  color: #0f172a;
+  border: 2px solid #000000;
+  box-shadow: 
+    5px 5px 0 0 #000000,
+    0 12px 32px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+/* Subtle corner registration marks on paper */
+.retro-a4-sheet::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 12px;
+  height: 12px;
+  border-top: 1.5px solid #cbd5e1;
+  border-left: 1.5px solid #cbd5e1;
+  pointer-events: none;
+}
+.retro-a4-sheet::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 12px;
+  height: 12px;
+  border-top: 1.5px solid #cbd5e1;
+  border-right: 1.5px solid #cbd5e1;
+  pointer-events: none;
+}
+
+/* 5. Tractor-Feed Continuous Paper Attachment Slot */
+.tractor-feed-slot {
+  background-color: #0b0e17;
+  border: 2px dashed #243049;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8);
+  transition: all 0.15s ease;
+}
+
+.tractor-feed-slot:hover {
+  border-color: #00f0ff;
+  background-color: #0d1424;
+  box-shadow: 
+    inset 0 2px 8px rgba(0, 0, 0, 0.8),
+    0 0 12px rgba(0, 240, 255, 0.2);
+}
+
+/* 6. Retro Divider Lines */
+.retro-divider-v {
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    #07090f 0%,
+    #253049 50%,
+    #07090f 100%
+  );
+  margin: 0 4px;
+}
+
+.retro-divider-h {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    #07090f 0%,
+    #253049 50%,
+    #07090f 100%
+  );
+  margin: 4px 0;
+}
+
+/* 7. CRT Scanlines & Screen Glow */
+.crt-scanlines {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.35) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.03),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 255, 0, 0.03)
+  );
+  background-size: 100% 4px, 6px 100%;
+  pointer-events: none;
+}
+
+/* 8. Retro Grid Background */
+.pixel-grid-bg {
+  background-color: #080a12;
+  background-image: 
+    linear-gradient(rgba(56, 189, 248, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* 9. Scrollbar hiding */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+
