@@ -418,12 +418,93 @@ const NoteContent: React.FC<NoteContentProps> = ({
   );
 };
 
-// Editable Rich Text Content for A4 Document Page
+// Helper to cleanly extract content overflowing the 1-page A4 height limit (995px)
+function extractPageOverflow(container: HTMLElement, maxHeight: number = 995): string | null {
+  if (container.scrollHeight <= maxHeight + 4) return null;
+
+  const overflowContainer = document.createElement("div");
+  let iterations = 0;
+  const maxIterations = 200;
+
+  // 1. Pop entire child elements from the bottom until container fits maxHeight
+  while (container.scrollHeight > maxHeight && container.childNodes.length > 1 && iterations < maxIterations) {
+    iterations++;
+    const last = container.lastChild;
+    if (!last) break;
+    container.removeChild(last);
+    if (overflowContainer.firstChild) {
+      overflowContainer.insertBefore(last, overflowContainer.firstChild);
+    } else {
+      overflowContainer.appendChild(last);
+    }
+  }
+
+  // 2. If single remaining child still causes overflow (e.g. a large paragraph or block)
+  if (container.scrollHeight > maxHeight && container.firstChild && iterations < maxIterations) {
+    const single = container.firstChild as HTMLElement;
+    if (single.nodeType === Node.ELEMENT_NODE && single.childNodes.length > 1) {
+      const childOverflow: Node[] = [];
+      while (container.scrollHeight > maxHeight && single.childNodes.length > 1 && iterations < maxIterations) {
+        iterations++;
+        const last = single.lastChild;
+        if (!last) break;
+        single.removeChild(last);
+        childOverflow.unshift(last);
+      }
+      if (childOverflow.length > 0) {
+        const clone = single.cloneNode(false) as HTMLElement;
+        childOverflow.forEach((n) => clone.appendChild(n));
+        if (overflowContainer.firstChild) {
+          overflowContainer.insertBefore(clone, overflowContainer.firstChild);
+        } else {
+          overflowContainer.appendChild(clone);
+        }
+      }
+    } else {
+      // Split single text content by words
+      const text = single.textContent || "";
+      const words = text.split(" ");
+      if (words.length > 1) {
+        let low = 0;
+        let high = words.length;
+        let fitIndex = 0;
+        while (low <= high) {
+          const mid = Math.floor((low + high) / 2);
+          single.textContent = words.slice(0, mid).join(" ");
+          if (container.scrollHeight <= maxHeight) {
+            fitIndex = mid;
+            low = mid + 1;
+          } else {
+            high = mid - 1;
+          }
+        }
+        if (fitIndex < words.length && fitIndex > 0) {
+          single.textContent = words.slice(0, fitIndex).join(" ");
+          const overflowWords = words.slice(fitIndex).join(" ");
+          const clone = single.cloneNode(false) as HTMLElement;
+          clone.textContent = overflowWords;
+          if (overflowContainer.firstChild) {
+            overflowContainer.insertBefore(clone, overflowContainer.firstChild);
+          } else {
+            overflowContainer.appendChild(clone);
+          }
+        }
+      }
+    }
+  }
+
+  const result = overflowContainer.innerHTML.trim();
+  return result || null;
+}
+
+// Editable Rich Text Content for A4 Document Page with Strict Single-Sheet Height & Auto Pagination
 interface A4PageContentProps {
   docId: string;
   pageIndex: number;
   initialContent: string;
   onUpdatePage: (docId: string, pageIndex: number, content: string) => void;
+  onPageOverflow?: (docId: string, pageIndex: number, currentPageContent: string, overflowHtml: string) => void;
+  onDeletePage?: (docId: string, pageIndex: number) => void;
   onCheckSelection: (refKey: string) => void;
   onFocusElement?: (refKey: string) => void;
   contentRefs: React.MutableRefObject<{ [key: string]: HTMLDivElement | null }>;
@@ -434,6 +515,8 @@ const A4PageContent: React.FC<A4PageContentProps> = ({
   pageIndex,
   initialContent,
   onUpdatePage,
+  onPageOverflow,
+  onDeletePage,
   onCheckSelection,
   onFocusElement,
   contentRefs,
@@ -449,13 +532,22 @@ const A4PageContent: React.FC<A4PageContentProps> = ({
     };
   }, [refKey, contentRefs]);
 
+  const checkOverflow = useCallback(() => {
+    if (!ref.current) return;
+    const overflowHtml = extractPageOverflow(ref.current, 995);
+    if (overflowHtml) {
+      onPageOverflow?.(docId, pageIndex, ref.current.innerHTML, overflowHtml);
+    }
+  }, [docId, pageIndex, onPageOverflow]);
+
   useEffect(() => {
     if (ref.current && !isTypingRef.current) {
       if (ref.current.innerHTML !== initialContent) {
         ref.current.innerHTML = initialContent || "";
+        checkOverflow();
       }
     }
-  }, [initialContent]);
+  }, [initialContent, checkOverflow]);
 
   return (
     <div
@@ -471,12 +563,50 @@ const A4PageContent: React.FC<A4PageContentProps> = ({
         onUpdatePage(docId, pageIndex, e.currentTarget.innerHTML);
       }}
       onInput={(e) => {
-        onUpdatePage(docId, pageIndex, e.currentTarget.innerHTML);
+        const overflowHtml = extractPageOverflow(e.currentTarget, 995);
+        if (overflowHtml) {
+          onPageOverflow?.(docId, pageIndex, e.currentTarget.innerHTML, overflowHtml);
+        } else {
+          onUpdatePage(docId, pageIndex, e.currentTarget.innerHTML);
+        }
+      }}
+      onPaste={() => {
+        setTimeout(checkOverflow, 25);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Backspace" && pageIndex > 0) {
+          const text = (e.currentTarget.textContent || "").trim();
+          if (!text || text === "") {
+            e.preventDefault();
+            onDeletePage?.(docId, pageIndex);
+            setTimeout(() => {
+              const prevKey = `${docId}-p${pageIndex - 1}`;
+              const prevEl = contentRefs.current[prevKey];
+              if (prevEl) {
+                prevEl.focus();
+                try {
+                  const range = document.createRange();
+                  range.selectNodeContents(prevEl);
+                  range.collapse(false);
+                  const sel = window.getSelection();
+                  if (sel) {
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                  }
+                } catch {}
+              }
+            }, 50);
+          }
+        }
       }}
       onMouseUp={() => onCheckSelection(refKey)}
       onKeyUp={() => onCheckSelection(refKey)}
       onMouseDown={(e) => e.stopPropagation()}
-      className="w-full h-full min-h-[960px] bg-white text-slate-850 focus:outline-none font-sans text-sm leading-relaxed select-text cursor-text"
+      className="w-full h-[995px] max-h-[995px] bg-white text-slate-850 focus:outline-none font-sans text-sm leading-relaxed select-text cursor-text overflow-hidden"
+      style={{
+        boxSizing: "border-box",
+        wordBreak: "break-word",
+      }}
     />
   );
 };
@@ -1389,6 +1519,7 @@ export default function PlaygroundCanvas({ roomId }: PlaygroundCanvasProps) {
       if (!sel || sel.isCollapsed || !sel.toString().trim()) {
         setFloatingMenu(null);
       }
+      updateFormattingFromSelection();
     };
 
     window.addEventListener("click", handleGlobalClick);
@@ -1401,9 +1532,87 @@ export default function PlaygroundCanvas({ roomId }: PlaygroundCanvasProps) {
     };
   }, []);
 
-  // Check selection to position floating formatting bar
+  // Helper to dynamically inspect and synchronize Font Family, Font Size, and Color from current cursor/selection
+  const updateFormattingFromSelection = useCallback(() => {
+    const sel = window.getSelection();
+    let targetEl: HTMLElement | null = null;
+
+    if (sel && sel.rangeCount > 0) {
+      let node: Node | null = sel.anchorNode;
+      if (node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          node = node.parentElement;
+        }
+        if (node instanceof HTMLElement) {
+          targetEl = node;
+        }
+      }
+    }
+
+    if (!targetEl && lastActiveRefKey.current) {
+      targetEl = contentRefs.current[lastActiveRefKey.current];
+    }
+
+    if (targetEl) {
+      const computed = window.getComputedStyle(targetEl);
+
+      // 1. Detect Font Family
+      const rawFamily = (computed.fontFamily || "").toLowerCase().replace(/['"]/g, "");
+      const matchedFamily = FONT_FAMILIES.find((f) =>
+        rawFamily.includes(f.name.toLowerCase()) || f.value.toLowerCase().includes(rawFamily)
+      );
+      if (matchedFamily) {
+        setFontFamily(matchedFamily.name);
+      }
+
+      // 2. Detect Font Size (pixels)
+      const rawSize = parseFloat(computed.fontSize);
+      if (!isNaN(rawSize) && rawSize > 0) {
+        setFontSize(Math.round(rawSize));
+      }
+
+      // 3. Detect Text Color
+      const rawColor = computed.color;
+      if (rawColor) {
+        const rgb = rawColor.match(/\d+/g);
+        if (rgb && rgb.length >= 3) {
+          const r = parseInt(rgb[0], 10).toString(16).padStart(2, "0");
+          const g = parseInt(rgb[1], 10).toString(16).padStart(2, "0");
+          const b = parseInt(rgb[2], 10).toString(16).padStart(2, "0");
+          setTextColor(`#${r}${g}${b}`);
+        }
+      }
+    }
+  }, []);
+
+  // Synchronize Typography when selecting a Shape
+  useEffect(() => {
+    if (selectedItem?.type === "shape") {
+      const sh = shapes.find((s) => s.id === selectedItem.id);
+      if (sh) {
+        if (sh.fontFamily) {
+          const matched = FONT_FAMILIES.find(
+            (f) =>
+              sh.fontFamily?.toLowerCase().includes(f.name.toLowerCase()) ||
+              f.value.toLowerCase().includes(sh.fontFamily?.toLowerCase() || "")
+          );
+          setFontFamily(matched ? matched.name : sh.fontFamily);
+        }
+        if (sh.fontSize) {
+          setFontSize(sh.fontSize);
+        }
+        if (sh.textColor) {
+          setTextColor(sh.textColor);
+        }
+      }
+    }
+  }, [selectedItem, shapes]);
+
+  // Check selection to position floating formatting bar and inspect typography
   const checkSelection = (refKey: string) => {
     lastActiveRefKey.current = refKey;
+    updateFormattingFromSelection();
+
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || !sel.toString().trim()) {
       setFloatingMenu(null);
@@ -1477,6 +1686,25 @@ export default function PlaygroundCanvas({ roomId }: PlaygroundCanvasProps) {
       if (cur) {
         yShapes.set(selectedItem.id, { ...cur, fontFamily: familyValue });
       }
+    } else if (lastActiveRefKey.current) {
+      document.execCommand("fontName", false, familyValue);
+      const key = lastActiveRefKey.current;
+      const el = contentRefs.current[key];
+      if (el) {
+        const fontTags = el.querySelectorAll("font[face]");
+        fontTags.forEach((f) => {
+          f.removeAttribute("face");
+          (f as HTMLElement).style.fontFamily = familyValue;
+        });
+        if (key.startsWith("a4-") || key.includes("-p")) {
+          const [docId, pageStr] = key.split("-p");
+          handleUpdateA4Page(docId, parseInt(pageStr, 10) || 0, el.innerHTML);
+        } else if (key.startsWith("shape-")) {
+          handleUpdateShapeContent(key, el.innerHTML);
+        } else {
+          handleUpdateNote(key, "content", el.innerHTML);
+        }
+      }
     }
   };
 
@@ -1512,6 +1740,25 @@ export default function PlaygroundCanvas({ roomId }: PlaygroundCanvasProps) {
       const cur = yShapes.get(selectedItem.id);
       if (cur) {
         yShapes.set(selectedItem.id, { ...cur, fontSize: clamped });
+      }
+    } else if (lastActiveRefKey.current) {
+      document.execCommand("fontSize", false, "7");
+      const key = lastActiveRefKey.current;
+      const el = contentRefs.current[key];
+      if (el) {
+        const fontTags = el.querySelectorAll('font[size="7"]');
+        fontTags.forEach((f) => {
+          f.removeAttribute("size");
+          (f as HTMLElement).style.fontSize = `${clamped}px`;
+        });
+        if (key.startsWith("a4-") || key.includes("-p")) {
+          const [docId, pageStr] = key.split("-p");
+          handleUpdateA4Page(docId, parseInt(pageStr, 10) || 0, el.innerHTML);
+        } else if (key.startsWith("shape-")) {
+          handleUpdateShapeContent(key, el.innerHTML);
+        } else {
+          handleUpdateNote(key, "content", el.innerHTML);
+        }
       }
     }
   };
@@ -2343,6 +2590,58 @@ export default function PlaygroundCanvas({ roomId }: PlaygroundCanvasProps) {
       pages[pageIndex] = content;
       yA4.set(docId, { ...current, pages });
     }
+  };
+
+  const handleAddA4Page = (docId: string) => {
+    const yA4 = ydoc.getMap<PlaygroundA4Doc>("playground-a4-docs");
+    const current = yA4.get(docId);
+    if (current) {
+      const pages = [...current.pages, "<p><br></p>"];
+      yA4.set(docId, { ...current, pages });
+    }
+  };
+
+  const handleA4PageOverflow = (
+    docId: string,
+    pageIndex: number,
+    currentPageContent: string,
+    overflowHtml: string
+  ) => {
+    const yA4 = ydoc.getMap<PlaygroundA4Doc>("playground-a4-docs");
+    const current = yA4.get(docId);
+    if (!current) return;
+
+    const pages = [...current.pages];
+    pages[pageIndex] = currentPageContent;
+
+    if (pageIndex + 1 < pages.length) {
+      // Prepend overflow to next page
+      pages[pageIndex + 1] = overflowHtml + (pages[pageIndex + 1] || "");
+    } else {
+      // Append brand new A4 page
+      pages.push(overflowHtml || "<p><br></p>");
+    }
+
+    yA4.set(docId, { ...current, pages });
+
+    // Seamlessly focus the next page
+    setTimeout(() => {
+      const nextPageKey = `${docId}-p${pageIndex + 1}`;
+      const nextEl = contentRefs.current[nextPageKey];
+      if (nextEl) {
+        nextEl.focus();
+        try {
+          const range = document.createRange();
+          range.selectNodeContents(nextEl);
+          range.collapse(false);
+          const sel = window.getSelection();
+          if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+        } catch {}
+      }
+    }, 60);
   };
 
   const handleUpdateA4Title = (docId: string, title: string) => {
@@ -4142,6 +4441,7 @@ export default function PlaygroundCanvas({ roomId }: PlaygroundCanvasProps) {
                 onCheckSelection={checkSelection}
                 onFocusElement={(id) => {
                   lastActiveRefKey.current = id;
+                  updateFormattingFromSelection();
                 }}
                 contentRefs={contentRefs}
               />
@@ -4360,6 +4660,17 @@ export default function PlaygroundCanvas({ roomId }: PlaygroundCanvasProps) {
                     {doc.pages.length} TRANG {doc.pages.length > 1 ? "LIÊN TỤC" : ""}
                   </span>
 
+                  <button
+                    type="button"
+                    onClick={() => handleAddA4Page(doc.id)}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    className="retro-btn flex items-center gap-1 text-[9px] font-pixel px-2 py-1 text-emerald-300 hover:text-white cursor-pointer"
+                    title="Thêm một trang A4 mới vào cuối tài liệu này"
+                  >
+                    <Plus className="w-3 h-3 text-emerald-400" />
+                    <span>+ TRANG</span>
+                  </button>
+
                   {/* Nút Ghép nhanh tờ này vào cuối tờ khác nếu có */}
                   {availableOtherDocs.length === 1 ? (
                     <button
@@ -4451,13 +4762,16 @@ export default function PlaygroundCanvas({ roomId }: PlaygroundCanvasProps) {
                     </div>
                   )}
 
-                  {/* Individual A4 Sheet - Neo-Retro Warm Paper Styling */}
+                  {/* Individual A4 Sheet - Strict 1-Page A4 Height & Styling */}
                   <div
                     className="relative retro-a4-sheet text-slate-900 mb-2 group/page"
                     style={{
                       width: "794px",
-                      minHeight: "1123px",
+                      height: "1123px",
+                      maxHeight: "1123px",
+                      overflow: "hidden",
                       padding: "64px",
+                      boxSizing: "border-box",
                     }}
                   >
                     {/* Page Number Watermark */}
@@ -4471,9 +4785,12 @@ export default function PlaygroundCanvas({ roomId }: PlaygroundCanvasProps) {
                       pageIndex={pageIndex}
                       initialContent={pageContent}
                       onUpdatePage={handleUpdateA4Page}
+                      onPageOverflow={handleA4PageOverflow}
+                      onDeletePage={handleDeleteA4Page}
                       onCheckSelection={checkSelection}
                       onFocusElement={(k) => {
                         lastActiveRefKey.current = k;
+                        updateFormattingFromSelection();
                       }}
                       contentRefs={contentRefs}
                     />
@@ -4669,6 +4986,7 @@ export default function PlaygroundCanvas({ roomId }: PlaygroundCanvasProps) {
               onCheckSelection={checkSelection}
               onFocusElement={(k) => {
                 lastActiveRefKey.current = k;
+                updateFormattingFromSelection();
               }}
               contentRefs={contentRefs}
             />
