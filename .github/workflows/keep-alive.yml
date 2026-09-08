@@ -1,0 +1,28 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Chạy tự động vào lúc 04:00 UTC mỗi 2 ngày một lần
+    - cron: '0 4 */2 * *'
+  workflow_dispatch: # Cho phép bấm nút chạy kiểm tra thủ công bất cứ lúc nào trên GitHub
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping ArcadeDocs Health API (Keep Supabase Active)
+        run: |
+          echo "Sending ping to https://arcadedocs.dev/api/health..."
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" https://arcadedocs.dev/api/health)
+          BODY=$(echo "$RESPONSE" | sed -e '$d')
+          STATUS=$(echo "$RESPONSE" | tail -n1 | cut -d: -f2)
+
+          echo "Response status: $STATUS"
+          echo "Response body: $BODY"
+
+          if [ "$STATUS" -ne 200 ]; then
+            echo "::error::Ping thất bại với mã lỗi $STATUS"
+            exit 1
+          fi
+
+          echo "Ping thành công! Database Supabase đã được giữ kích hoạt."
