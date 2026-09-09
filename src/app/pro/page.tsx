@@ -7,6 +7,8 @@ import {
   FileText, Sparkles, ArrowRight
 } from "lucide-react";
 import { PixelDiscordBot } from "@/components/pro/PixelBots";
+import { useAuth } from "@/lib/auth-context";
+import { UserNav } from "@/components/auth/UserNav";
 
 // Inline SVGs for icons not exported by lucide-react v1.39
 const Globe = ({ className = "" }: { className?: string }) => (
@@ -54,6 +56,7 @@ function timeAgo(iso: string) {
 
 export default function ProHomePage() {
   const router = useRouter();
+  const { user, token, isGuest, openAuthModal } = useAuth();
   const [files, setFiles] = useState<CanvasFile[]>([]);
   const [sharedFiles, setSharedFiles] = useState<CanvasFile[]>([]);
   const [activeTab, setActiveTab] = useState<"mine" | "shared">("mine");
@@ -65,11 +68,17 @@ export default function ProHomePage() {
   const [editTitle, setEditTitle] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const authHeaders = useCallback((extra: Record<string, string> = {}) => {
+    const headers: Record<string, string> = { ...extra };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    return headers;
+  }, [token]);
+
   const loadFiles = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const res = await fetch("/api/files");
+      const res = await fetch("/api/files", { headers: authHeaders() });
       if (res.ok) {
         const data = await res.json();
         setFiles(data.files ?? []);
@@ -106,9 +115,11 @@ export default function ProHomePage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authHeaders]);
 
-  useEffect(() => { loadFiles(); }, [loadFiles]);
+  useEffect(() => {
+    loadFiles();
+  }, [loadFiles, user, token]);
 
   const handleCreate = async () => {
     setCreating(true);
@@ -116,7 +127,7 @@ export default function ProHomePage() {
     try {
       const res = await fetch("/api/files", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ title: "Untitled Canvas" }),
       });
       const data = await res.json().catch(() => ({}));
@@ -135,7 +146,7 @@ export default function ProHomePage() {
   const handleTogglePrivacy = async (file: CanvasFile) => {
     const res = await fetch(`/api/files/${file.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ is_public: !file.is_public }),
     });
     if (res.ok) setFiles((prev) => prev.map((f) => f.id === file.id ? { ...f, is_public: !f.is_public } : f));
@@ -146,7 +157,7 @@ export default function ProHomePage() {
     if (!title) return;
     const res = await fetch(`/api/files/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ title }),
     });
     if (res.ok) {
@@ -156,7 +167,10 @@ export default function ProHomePage() {
   };
 
   const handleDelete = async (id: string) => {
-    const res = await fetch(`/api/files/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/files/${id}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
     if (res.ok) {
       setFiles((prev) => prev.filter((f) => f.id !== id));
       setDeletingId(null);
@@ -184,10 +198,12 @@ export default function ProHomePage() {
               title={`Mã định danh tài khoản: ${ownerId}`}
             >
               <span className="w-2 h-2 bg-emerald-400 border border-black animate-pulse" />
-              <span className="text-slate-500 uppercase text-[9px] font-pixel">TÀI KHOẢN:</span>
+              <span className="text-slate-500 uppercase text-[9px] font-pixel">ID:</span>
               <span className="text-cyan-300 font-mono font-bold">#{ownerId.slice(0, 8).toUpperCase()}</span>
             </div>
           )}
+
+          <UserNav variant="retro" />
 
           <button
             onClick={handleCreate}
@@ -204,6 +220,29 @@ export default function ProHomePage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-10">
+        {/* Banner cảnh báo chế độ Khách */}
+        {isGuest && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-amber-950/40 via-[#121626] to-[#0d1120] border-l-4 border-amber-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[2px_2px_0_0_#000]">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">👾</span>
+              <div>
+                <p className="font-pixel text-[11px] text-amber-400 uppercase tracking-wider">
+                  BẠN ĐANG Ở CHẾ ĐỘ KHÁCH (CHƯA ĐỒNG BỘ ĐA THIẾT BỊ)
+                </p>
+                <p className="text-xs text-slate-300 font-mono mt-0.5">
+                  Đăng nhập để đồng bộ toàn bộ bảng vẽ hiện tại sang các máy khác và không lo mất file khi xóa trình duyệt.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => openAuthModal("login")}
+              className="retro-btn-amber px-4 py-2 text-[10px] font-pixel uppercase font-bold tracking-wider cursor-pointer whitespace-nowrap shadow-xs"
+            >
+              ĐĂNG NHẬP ĐỒNG BỘ
+            </button>
+          </div>
+        )}
+
         {/* Tab switcher */}
         <div className="flex items-center gap-2 sm:gap-4 mb-8 border-b-2 border-[#1a2236] pb-3 select-none">
           <button

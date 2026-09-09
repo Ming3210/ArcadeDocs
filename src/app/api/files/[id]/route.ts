@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { getOrSetOwnerId, attachOwnerCookie } from "@/lib/auth-cookie";
+import { getUserIdOrOwnerId, attachOwnerCookie } from "@/lib/auth-cookie";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const { ownerId, isNew } = getOrSetOwnerId(req);
+  const { ownerId, isNew, isGuest } = await getUserIdOrOwnerId(req);
 
   const { data, error } = await supabase
     .from("canvas_files")
@@ -17,7 +17,7 @@ export async function GET(
 
   if (error || !data) {
     const res = NextResponse.json({ error: "Not found" }, { status: 404 });
-    if (isNew) attachOwnerCookie(res, ownerId);
+    if (isGuest && isNew) attachOwnerCookie(res, ownerId);
     return res;
   }
 
@@ -56,11 +56,12 @@ export async function GET(
           is_public: false,
           isOwner: false,
           ownerId,
+          isGuest,
           accountCode: ownerId.slice(0, 8).toUpperCase(),
         },
         { status: 403 }
       );
-      if (isNew) attachOwnerCookie(res, ownerId);
+      if (isGuest && isNew) attachOwnerCookie(res, ownerId);
       return res;
     }
 
@@ -76,8 +77,9 @@ export async function GET(
     isWhitelisted,
     permission: userPermission,
     ownerId,
+    isGuest,
   });
-  if (isNew) attachOwnerCookie(res, ownerId);
+  if (isGuest && isNew) attachOwnerCookie(res, ownerId);
   return res;
 }
 
@@ -86,7 +88,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const { ownerId } = getOrSetOwnerId(req);
+  const { ownerId } = await getUserIdOrOwnerId(req);
   const body = await req.json().catch(() => ({}));
 
   const { data: existing } = await supabase
@@ -119,7 +121,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const { ownerId } = getOrSetOwnerId(req);
+  const { ownerId } = await getUserIdOrOwnerId(req);
 
   const { data: existing } = await supabase
     .from("canvas_files")

@@ -15,7 +15,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ArcadeDocs - Trình soạn thảo & Canvas cộng tác thời gian thực",
   description: "Soạn thảo văn bản & bảng vẽ canvas cộng tác nhiều người dùng phong cách Retro với Next.js, Tiptap, Yjs và PartyKit",
+  verification: {
+    google: "LiFj0rMyg8zHJ9k9B4QWJlZoFyNQQMoOwgeKdg3Ltyw",
+  },
 };
+
+import { AuthProvider } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth/AuthModal";
 
 export default function RootLayout({
   children,
@@ -74,7 +80,10 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        {children}
+        <AuthProvider>
+          {children}
+          <AuthModal />
+        </AuthProvider>
       </body>
     </html>
   );

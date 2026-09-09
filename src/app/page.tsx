@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FilePlus2, ArrowRight, Users, Sparkles, Cloud, Zap, ShieldCheck } from "lucide-react";
+import { UserNav } from "@/components/auth/UserNav";
 
 export default function HomePage() {
   const router = useRouter();
@@ -57,6 +58,8 @@ export default function HomePage() {
             <FilePlus2 className="w-4 h-4" />
             <span>Tạo tài liệu mới</span>
           </button>
+
+          <UserNav variant="light" />
         </div>
       </nav>
 

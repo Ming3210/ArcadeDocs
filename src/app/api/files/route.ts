@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { randomUUID } from "crypto";
-import { getOrSetOwnerId, attachOwnerCookie } from "@/lib/auth-cookie";
+import { getUserIdOrOwnerId, attachOwnerCookie } from "@/lib/auth-cookie";
 
 export async function GET(req: NextRequest) {
-  const { ownerId, isNew } = getOrSetOwnerId(req);
+  const { ownerId, isNew, isGuest } = await getUserIdOrOwnerId(req);
   const cleanOwnerId = ownerId.toLowerCase();
   const shortCode = cleanOwnerId.slice(0, 8);
 
@@ -84,8 +84,9 @@ export async function GET(req: NextRequest) {
     files: enrichedFiles,
     sharedFiles,
     ownerId,
+    isGuest,
   });
-  if (isNew) attachOwnerCookie(res, ownerId);
+  if (isGuest && isNew) attachOwnerCookie(res, ownerId);
   return res;
 }
 
@@ -94,7 +95,7 @@ export async function POST(req: NextRequest) {
   const rawTitle = typeof body.title === "string" ? body.title : (typeof body.name === "string" ? body.name : "");
   const title = rawTitle.trim() ? rawTitle.trim() : "Untitled Canvas";
   const is_public = typeof body.is_public === "boolean" ? body.is_public : true;
-  const { ownerId, isNew } = getOrSetOwnerId(req);
+  const { ownerId, isNew, isGuest } = await getUserIdOrOwnerId(req);
 
   const id = (typeof body.id === "string" && body.id.trim()) ? body.id.trim() : randomUUID();
 
@@ -114,8 +115,8 @@ export async function POST(req: NextRequest) {
       );
     }
     // File đã thuộc về chủ sở hữu này -> trả về file hiện tại an toàn
-    const res = NextResponse.json({ file: existing, isOwner: true, ownerId });
-    if (isNew) attachOwnerCookie(res, ownerId);
+    const res = NextResponse.json({ file: existing, isOwner: true, ownerId, isGuest });
+    if (isGuest && isNew) attachOwnerCookie(res, ownerId);
     return res;
   }
 
@@ -131,7 +132,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const res = NextResponse.json({ file: data, isOwner: true, ownerId });
-  if (isNew) attachOwnerCookie(res, ownerId);
+  const res = NextResponse.json({ file: data, isOwner: true, ownerId, isGuest });
+  if (isGuest && isNew) attachOwnerCookie(res, ownerId);
   return res;
 }

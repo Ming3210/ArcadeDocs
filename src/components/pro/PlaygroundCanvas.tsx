@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import * as Y from "yjs";
 import YPartyKitProvider from "y-partykit/provider";
 import { getRandomUser, DocUser } from "@/lib/random-user";
+import { useAuth } from "@/lib/auth-context";
+import { UserNav } from "@/components/auth/UserNav";
 import {
   PixelDiscordBot,
   PixelGhostBot,
@@ -3121,6 +3123,8 @@ export default function PlaygroundCanvas({ roomId }: PlaygroundCanvasProps) {
               </span>
             )}
           </button>
+
+          <UserNav variant="retro" />
         </div>
       </header>
 

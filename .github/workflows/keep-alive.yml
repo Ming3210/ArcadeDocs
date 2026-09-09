@@ -3,7 +3,7 @@ name: Keep Supabase Alive
 on:
   schedule:
     # Chạy tự động vào lúc 04:00 UTC mỗi 2 ngày một lần
-    - cron: '0 4 */2 * *'
+    - cron: "0 4 */6 * *"
   workflow_dispatch: # Cho phép bấm nút chạy kiểm tra thủ công bất cứ lúc nào trên GitHub
 
 jobs:

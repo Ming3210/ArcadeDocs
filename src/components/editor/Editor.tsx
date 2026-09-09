@@ -27,6 +27,7 @@ import { Toolbar } from "./Toolbar";
 import { ActiveUsers } from "./ActiveUsers";
 import { getRandomUser, DocUser } from "@/lib/random-user";
 import { Share2, Check, FileText, Sparkles, Pencil } from "lucide-react";
+import { UserNav } from "@/components/auth/UserNav";
 
 interface EditorProps {
   documentId: string;
@@ -312,11 +313,13 @@ export default function CollaborativeEditor({ documentId }: EditorProps) {
           <button
             type="button"
             onClick={handleCopyLink}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition shadow-sm"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition shadow-sm cursor-pointer"
           >
             {copied ? <Check className="w-4 h-4 text-emerald-300" /> : <Share2 className="w-4 h-4" />}
             <span>{copied ? "Đã copy link!" : "Chia sẻ phòng"}</span>
           </button>
+
+          <UserNav variant="light" />
         </div>
       </header>
 
